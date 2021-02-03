@@ -1,4 +1,5 @@
 ﻿using BikeStores.Data.Entities;
+using BikeStores.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System;
@@ -17,25 +18,30 @@ namespace BikeStores.Controllers
         {
             _context = new BikeStoresContext();
         }
-        [HttpGet("list")]
+        [HttpGet()]
         public ActionResult<List<Stock>> GetSto()
         {
-            var entity = _context.Stocks.ToList();
+            var entity = _context.Stocks.Where(x => !x.IsDeleted);
             if (entity == null)
             {
                 return NoContent();
             }
+            var entityDto = entity.Select(x => new StockListDto 
+            {
+            ProductId=x.ProductId,
+            StoreId=x.StoreId 
+            });
             return Ok(entity);
-        }
+        }       
         [HttpDelete("{id}")]
         public ActionResult DeleteSto(int id)
         {
-            var entity = _context.Stocks.FirstOrDefault(x => x.ProductId == id);
+            var entity = _context.Stocks.FirstOrDefault(x => x.Quantity == id);
             if (entity == null)
             {
                 return NoContent();
             }
-            //_context.OrderItems.Remove(entity);
+            _context.Stocks.FirstOrDefault(x => x == entity).IsDeleted = true;
             _context.SaveChanges();
             return Ok();
         }

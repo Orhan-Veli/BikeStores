@@ -67,11 +67,11 @@ namespace BikeStores.Controllers
             {
                 foreach (var order in item.OrderItems)
                 {
-                    _bikeStores.Remove(order);
+                    _bikeStores.OrderItems.FirstOrDefault(x => x == order).IsDeleted = true;
                 }
-                _bikeStores.Remove(item);
+                _bikeStores.Products.FirstOrDefault(x => x == item).IsDeleted = true;
             }
-            _bikeStores.Categories.Remove(deleteCategory);
+            _bikeStores.Categories.FirstOrDefault(x => x == deleteCategory).IsDeleted = true;
             _bikeStores.SaveChanges();
             return Ok("Id silinmiştir.");
         }

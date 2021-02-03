@@ -1,4 +1,5 @@
 ﻿using BikeStores.Data.Entities;
+using BikeStores.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System;
@@ -17,14 +18,51 @@ namespace BikeStores.Controllers
         {
             _context = new BikeStoresContext();
         }
-        [HttpGet("list")]
+        [HttpGet()]
         public ActionResult<List<Store>> GetStor()
         {
-            var entity = _context.Stores.ToList();
+            var entity = _context.Stores.Where(x=> !x.IsDeleted);
             if (entity == null)
             {
                 return NoContent();
             }
+            var entityDto = entity.Select(x => new StoreNameDto 
+            {
+            Phone=x.Phone,
+            StoreId=x.StoreId,
+            StoreName=x.StoreName          
+            });
+            return Ok(entityDto);
+        }
+        [HttpGet("list")]
+        public ActionResult<List<Store>> GetStorListDto()
+        {
+            var entity = _context.Stores.Where(x=> !x.IsDeleted);
+            if (entity == null)
+            {
+                return NoContent();
+            }
+            var entityDto = entity.Select(x => new StoreListDto
+            {
+                StaffNameDtos = x.Staff.Select(t => new StaffNameDto
+                {
+                    FirstName = t.FirstName,
+                    LastName=t.LastName,
+                    StaffId=t.StaffId
+                   
+                }).ToList(),
+                OrderNameDtos=x.Orders.Select(p=> new OrderNameDto 
+                {
+                CustomerId=p.CustomerId,
+                OrderId=p.OrderId,
+                OrderStatus=p.OrderStatus                
+                }).ToList(),
+                StockNameDtos=x.Stocks.Select(q=> new StockListDto 
+                {
+                ProductId=q.ProductId,
+                StoreId=q.StoreId
+                }).ToList()             
+            }) ;
             return Ok(entity);
         }
         [HttpDelete("{id}")]
@@ -37,17 +75,17 @@ namespace BikeStores.Controllers
             }
             foreach (var item in entity.Orders)
             {
-                _context.Orders.Remove(item);
+                _context.Orders.FirstOrDefault(x => x == item).IsDeleted = true;
             }
             foreach (var item in entity.Stocks)
             {
-                _context.Stocks.Remove(item);
+                _context.Stocks.FirstOrDefault(x => x == item).IsDeleted = true;
             }
             foreach (var item in entity.Staff)
             {
-                _context.Staffs.Remove(item);
+                _context.Staffs.FirstOrDefault(x => x == item).IsDeleted = true;
             }
-            _context.Stores.Remove(entity);
+            _context.Stores.FirstOrDefault(x => x == entity).IsDeleted = true;
             _context.SaveChanges();
             return Ok();
         }

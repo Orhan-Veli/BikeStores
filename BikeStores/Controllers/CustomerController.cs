@@ -1,4 +1,5 @@
 ﻿using BikeStores.Data.Entities;
+using BikeStores.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System;
@@ -17,15 +18,45 @@ namespace BikeStores.Controllers
         {
             _context = new BikeStoresContext();
         }
-        [HttpGet("customer")]
+        [HttpGet()]
         public ActionResult<List<Customer>> GetCustomer()
         {
-          
-            var entity= _context.Customers.ToList();
+
+            var entity = _context.Customers.Where(x => !x.IsDeleted);
             if (entity==null)
             {
                 return NotFound();
             }
+            var dtoEntity = entity.Select(p => new CustomerNameDto
+            {
+                CustomerId = p.CustomerId,
+                FirstName=p.FirstName,
+                LastName=p.LastName    
+            });
+            return Ok(dtoEntity);
+        }
+        [HttpGet("list")]
+        public ActionResult<List<Customer>> GetCustomerList()
+        {
+
+            var entity = _context.Customers.Where(x=> !x.IsDeleted);
+            if (entity == null)
+            {
+                return NotFound();
+            }
+            var entityDto = entity.Select(t => new CustomerListDto 
+            {
+            CustomerId=t.CustomerId,
+            FirstName=t.FirstName,
+            LastName=t.LastName,
+            Orders=t.Orders.Select(p=> new OrderListDto 
+            { 
+            CustomerId=p.CustomerId,
+            OrderId=p.OrderId,
+            OrderStatus=p.OrderStatus
+            }).ToList()
+            });
+           
             return Ok(entity);
         }
         [HttpDelete("{id}")]
@@ -38,9 +69,9 @@ namespace BikeStores.Controllers
             }
             foreach (var item in entity.Orders)
             {
-                _context.Orders.Remove(item);
+                _context.Orders.FirstOrDefault(x => x == item).IsDeleted = true;
             }
-            _context.Customers.Remove(entity);
+            _context.Customers.FirstOrDefault(x => x == entity).IsDeleted = true;
             _context.SaveChanges();
             return Ok("Kayıt silinmiştir.");
         }

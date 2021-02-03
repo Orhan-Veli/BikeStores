@@ -1,4 +1,5 @@
 ﻿using BikeStores.Data.Entities;
+using BikeStores.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System;
@@ -17,29 +18,57 @@ namespace BikeStores.Controllers
         {
             _context = new BikeStoresContext();
         }
-        [HttpGet("order")]
+        [HttpGet()]
         public ActionResult<List<Order>> GetOrder()
         {
-            var entity = _context.Orders.ToList();
+            var entity = _context.Orders.Where(x=> !x.IsDeleted);
             if (entity==null)
             {
                 return NotFound();
             }
+            var entityDto = entity.Select(x => new OrderNameDto 
+            {
+            CustomerId=x.CustomerId,
+            OrderId=x.OrderId,
+            OrderStatus=x.OrderStatus           
+            });
+            return Ok(entityDto);
+        }
+        [HttpGet("list")]
+        public ActionResult<List<Order>> GetOrderList()
+        {
+            var entity = _context.Orders.Where(x=> !x.IsDeleted);
+            if (entity == null)
+            {
+                return NotFound();
+            }
+            var entityDto = entity.Select(x => new OrderListDto 
+            {
+            CustomerId=x.CustomerId,
+            OrderId=x.OrderId,
+            OrderStatus =x.OrderStatus,
+            OrderItems =x.OrderItems.Select(t=> new OrderItemListDto 
+            {
+            ItemId=t.ItemId,
+            OrderId=t.OrderId,
+            ProductId=t.ProductId            
+            }).ToList()           
+            });
             return Ok(entity);
         }
         [HttpDelete("{id}")]
         public ActionResult DeleteOr(int id)
         {
-            var entity = _context.Orders.FirstOrDefault(x => x.CustomerId == id);
+            var entity = _context.Orders.FirstOrDefault(x => x.OrderId == id);
             if (entity==null)
             {
                 return NotFound();
             }
             foreach (var item in entity.OrderItems)
             {
-                _context.OrderItems.Remove(item);
+                _context.OrderItems.FirstOrDefault(x => x == item).IsDeleted = true;
             }           
-            _context.Orders.Remove(entity);
+            _context.Orders.FirstOrDefault(x=> x== entity).IsDeleted=true;
             _context.SaveChanges();
             return Ok("Kayıt silinmiştir.");
         }

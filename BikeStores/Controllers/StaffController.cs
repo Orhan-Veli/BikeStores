@@ -1,4 +1,5 @@
 ﻿using BikeStores.Data.Entities;
+using BikeStores.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System;
@@ -17,15 +18,43 @@ namespace BikeStores.Controllers
         {
             _context = new BikeStoresContext();
         }
-        [HttpGet("list")]
+        [HttpGet()]
         public ActionResult<List<Staff>> GetOrIt()
         {
-            var entity = _context.Staffs.ToList();
+            var entity = _context.Staffs.Where(x=> !x.IsDeleted);
             if (entity == null)
             {
                 return NoContent();
             }
-            return Ok(entity);
+            var entityDto = entity.Select(x=> new StaffNameDto 
+            {
+            FirstName=x.FirstName,
+            LastName=x.LastName,
+            StaffId=x.StaffId            
+            });
+            return Ok(entityDto);
+        }
+        [HttpGet("list")]
+        public ActionResult<List<Staff>> GetOrItListDto()
+        {
+            var entity = _context.Staffs.Where(x=> !x.IsDeleted);
+            if (entity == null)
+            {
+                return NoContent();
+            }
+            var entityDto = entity.Select(x => new StaffListDto
+            {
+                FirstName = x.FirstName,
+                LastName = x.LastName,
+                StaffId = x.StaffId,
+                OrderListDtos = x.Orders.Select(t => new OrderNameDto 
+                {
+                CustomerId=t.CustomerId,
+                OrderId=t.OrderId,
+                OrderStatus=t.OrderStatus                
+                }).ToList()
+            });
+            return Ok(entityDto);
         }
         [HttpDelete("{id}")]
         public ActionResult DeleteSt(int id)
@@ -37,13 +66,13 @@ namespace BikeStores.Controllers
             }
             foreach (var item in entity.InverseManager)
             {
-                _context.Staffs.Remove(item);
+                _context.Staffs.FirstOrDefault(x => x == item).IsDeleted = true;
             }
             foreach (var item in entity.Orders)
             {
-                _context.Orders.Remove(item);
-            }          
-            _context.Staffs.Remove(entity);
+                _context.Orders.FirstOrDefault(x => x == item).IsDeleted = true;
+            }
+            _context.Staffs.FirstOrDefault(x => x == entity).IsDeleted = true;
             _context.SaveChanges();
             return Ok();
         }

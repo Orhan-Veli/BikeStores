@@ -1,4 +1,5 @@
 ﻿using BikeStores.Data.Entities;
+using BikeStores.Models;
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Collections.Generic;
@@ -16,17 +17,44 @@ namespace BikeStores.Controllers
         {
             _context = new BikeStoresContext();
         }
-        [HttpGet("list")]
+        [HttpGet()]
         public ActionResult<List<Brand>> GetBrands()
         {
-            var brandList = _context.Brands.ToList();
-            if (brandList.Count==0)
+            var brandList = _context.Brands.Where(x=> !x.IsDeleted);
+            if (brandList==null)
             {
                 return BadRequest();
             }
-            return Ok(brandList);
+            var entity = brandList.Select(x => new BrandNameDto 
+            {
+             BrandId=x.BrandId,
+             BrandName=x.BrandName        
+            });
+            return Ok(entity);
         }
-        
+        [HttpGet("list")]
+        public ActionResult<List<Brand>> GetBrandsList()
+        {
+            var brandList = _context.Brands.Where(x => !x.IsDeleted);
+            if (brandList == null)
+            {
+                return BadRequest();
+            }
+            var entity = brandList.Select(x => new BrandListDto
+            {
+                BrandId = x.BrandId,
+                BrandName = x.BrandName,
+                Products = x.Products.Select(p => new ProductNameDto
+                {
+                    ListPrice = p.ListPrice,
+                    ModelYear = p.ModelYear,
+                    ProductId = p.ProductId,
+                    ProductName = p.ProductName
+                }).ToList()
+            });
+            return Ok(entity);
+        }
+
         [HttpPut("update")]
         public ActionResult<Brand> PutBrand([FromBody]Brand model)
         {
@@ -71,11 +99,11 @@ namespace BikeStores.Controllers
             }
             foreach (var item in entity.Products)
             {
-                _context.Products.Remove(item);
+                _context.Products.FirstOrDefault(x => x == item).IsDeleted = true;
             }
-            _context.Brands.Remove(entity);
+            _context.Brands.FirstOrDefault(x => x == entity).IsDeleted = true;      
             _context.SaveChanges();
-            return NoContent();
+            return Ok("Obje silinmiştir.");
         }
 
     }

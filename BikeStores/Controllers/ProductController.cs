@@ -1,4 +1,5 @@
 ﻿using BikeStores.Data.Entities;
+using BikeStores.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System;
@@ -18,14 +19,50 @@ namespace BikeStores.Controllers
         {
             _context = new BikeStoresContext();
         }
-        [HttpGet("list")]
+        [HttpGet()]
         public ActionResult<List<Product>> GetPr()
         {
-            var entity = _context.Products.ToList();
+            var entity = _context.Products.Where(x=> !x.IsDeleted);
             if (entity == null)
             {
                 return NoContent();
             }
+            var entityDto = entity.Select(x => new ProductNameDto 
+            {
+            ListPrice=x.ListPrice,
+            ModelYear=x.ModelYear,
+            ProductId=x.ProductId,
+            ProductName=x.ProductName           
+            });
+            return Ok(entityDto);
+        }
+        [HttpGet("list")]
+        public ActionResult<List<Product>> GetPrListDto()
+        {
+            var entity = _context.Products.Where(x=> !x.IsDeleted);
+            if (entity == null)
+            {
+                return NoContent();
+            }
+            var entityDto = entity.Select(x => new ProductListDto 
+            {
+            ListPrice=x.ListPrice,
+            ModelYear=x.ModelYear,
+            ProductId=x.ProductId,
+            ProductName=x.ProductName,
+            OrderItemListDtos=x.OrderItems.Select(t=> new OrderItemListDto 
+            {
+            ItemId=t.ItemId,
+            OrderId=t.OrderId,
+            ProductId=t.ProductId            
+            }).ToList(),
+            Stocks=x.Stocks.Select(p=> new StockListDto 
+            {
+            ProductId=p.ProductId,
+            StoreId=p.StoreId            
+            }).ToList()           
+            
+            });
             return Ok(entity);
         }
         [HttpDelete("{id}")]
@@ -38,13 +75,13 @@ namespace BikeStores.Controllers
             }
             foreach (var item in entity.OrderItems)
             {
-                _context.OrderItems.Remove(item);
+                _context.OrderItems.FirstOrDefault(x => x == item).IsDeleted = true;
             }
             foreach (var item in entity.Stocks)
             {
-                _context.Stocks.Remove(item);
+                _context.Stocks.FirstOrDefault(x => x == item).IsDeleted = true;
             }
-            _context.Products.Remove(entity);
+            _context.Products.FirstOrDefault(x => x == entity).IsDeleted = true;
             _context.SaveChanges();
             return Ok();
         }

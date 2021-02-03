@@ -1,4 +1,5 @@
 ﻿using BikeStores.Data.Entities;
+using BikeStores.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System;
@@ -17,15 +18,21 @@ namespace BikeStores.Controllers
         {
             _context = new BikeStoresContext();
         }
-        [HttpGet("list")]
+        [HttpGet()]
         public ActionResult<List<OrderItem>> GetOrIt()
         {
-            var entity = _context.OrderItems.ToList();
+            var entity = _context.OrderItems.Where(x=> !x.IsDeleted);
             if (entity==null)
             {
                 return NoContent();
             }
-            return Ok(entity);
+            var entityDto = entity.Select(x => new OrderItemListDto 
+            {
+                ItemId=x.ItemId,
+                OrderId=x.OrderId,
+                ProductId=x.ProductId
+            });
+            return Ok(entityDto);
         }
         [HttpDelete("{id}")]
         public ActionResult DeleteOrIt(int id)
@@ -35,7 +42,7 @@ namespace BikeStores.Controllers
             {
                 return NoContent();
             }
-            _context.OrderItems.Remove(entity);
+            _context.OrderItems.FirstOrDefault(x=> x==entity).IsDeleted=true;
             _context.SaveChanges();
             return Ok();
         }
