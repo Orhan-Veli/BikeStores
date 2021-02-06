@@ -2,6 +2,7 @@
 using BikeStores.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -62,16 +63,17 @@ namespace BikeStores.Controllers
         [HttpDelete("{id}")]
         public ActionResult CustomerDelete(int id)
         {
-            var entity = _context.Customers.FirstOrDefault(x=> x.CustomerId==id);
+            var entity = _context.Customers.Include("Orders").FirstOrDefault(x=> x.CustomerId==id);
             if (entity==null)
             {
                 return NotFound();
             }
             foreach (var item in entity.Orders)
             {
-                _context.Orders.FirstOrDefault(x => x == item).IsDeleted = true;
+                item.IsDeleted = true;
             }
-            _context.Customers.FirstOrDefault(x => x == entity).IsDeleted = true;
+            entity.IsDeleted = true;
+            _context.Update(entity);
             _context.SaveChanges();
             return Ok("Kayıt silinmiştir.");
         }

@@ -1,6 +1,7 @@
 ﻿using BikeStores.Data.Entities;
 using BikeStores.Models;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -12,15 +13,15 @@ namespace BikeStores.Controllers
     [Route("[controller]")]
     public class CategoryController : ControllerBase
     {
-        BikeStoresContext _bikeStores;
+        BikeStoresContext _context;
         public CategoryController()
         {
-            _bikeStores = new BikeStoresContext();
+            _context = new BikeStoresContext();
         }
         [HttpGet]
         public ActionResult GetCategoryNames()
         {
-            var entity = _bikeStores.Categories.Where(x => !x.IsDeleted);
+            var entity = _context.Categories.Where(x => !x.IsDeleted);
             if (entity == null)
             {
                 return BadRequest();
@@ -35,7 +36,7 @@ namespace BikeStores.Controllers
         [HttpGet("list")]
         public ActionResult GetCategoriesWithProducts()
         {
-            var entity = _bikeStores.Categories.Where(x => !x.IsDeleted);
+            var entity = _context.Categories.Where(x => !x.IsDeleted);
             if (entity == null)
             {
                 return BadRequest();
@@ -58,21 +59,22 @@ namespace BikeStores.Controllers
         [HttpDelete("{id}")]
         public ActionResult DeleteControl(int id)
         {
-            var deleteCategory = _bikeStores.Categories.FirstOrDefault(x => x.CategoryId == id);
-            if (deleteCategory == null)
+            var entity = _context.Categories.Include("Products").Include("OrderItems").FirstOrDefault(x => x.CategoryId == id);
+            if (entity == null)
             {
                 return NotFound();
             }
-            foreach (var item in deleteCategory.Products)
+            foreach (var item in entity.Products)
             {
                 foreach (var order in item.OrderItems)
                 {
-                    _bikeStores.OrderItems.FirstOrDefault(x => x == order).IsDeleted = true;
+                    order.IsDeleted = true;
                 }
-                _bikeStores.Products.FirstOrDefault(x => x == item).IsDeleted = true;
+               item.IsDeleted = true;
             }
-            _bikeStores.Categories.FirstOrDefault(x => x == deleteCategory).IsDeleted = true;
-            _bikeStores.SaveChanges();
+            entity.IsDeleted = true;
+            _context.Update(entity);
+            _context.SaveChanges();
             return Ok("Id silinmiştir.");
         }
         [HttpPut("update")]
@@ -83,15 +85,15 @@ namespace BikeStores.Controllers
             {
                 return BadRequest();
             }
-            var entity = _bikeStores.Categories.FirstOrDefault(x => x.CategoryId == model.CategoryId);
+            var entity = _context.Categories.FirstOrDefault(x => x.CategoryId == model.CategoryId);
             if (entity == null)
             {
                 return NotFound();
             }
             entity.CategoryId = model.CategoryId;
             entity.CategoryName = model.CategoryName;
-            _bikeStores.Categories.Update(entity);
-            _bikeStores.SaveChanges();
+            _context.Categories.Update(entity);
+            _context.SaveChanges();
             return Ok(entity);
         }
         [HttpPost("create")]
@@ -101,13 +103,13 @@ namespace BikeStores.Controllers
             {
                 return BadRequest();
             }
-            var isSame = _bikeStores.Categories.Any(x => x.CategoryId == model.CategoryId && x.CategoryName == model.CategoryName);
+            var isSame = _context.Categories.Any(x => x.CategoryId == model.CategoryId && x.CategoryName == model.CategoryName);
             if (isSame)
             {
                 return BadRequest();
             }
-            _bikeStores.Categories.Add(model);
-            _bikeStores.SaveChanges();
+            _context.Categories.Add(model);
+            _context.SaveChanges();
             return Ok("Kayıt Eklendi");
         }
     }

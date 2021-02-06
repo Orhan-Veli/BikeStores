@@ -2,6 +2,7 @@
 using BikeStores.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -59,20 +60,21 @@ namespace BikeStores.Controllers
         [HttpDelete("{id}")]
         public ActionResult DeleteSt(int id)
         {
-            var entity = _context.Staffs.FirstOrDefault(x => x.StaffId == id);
+            var entity = _context.Staffs.Include("InverseManager").Include("Orders").FirstOrDefault(x => x.StaffId == id);
             if (entity == null)
             {
                 return NoContent();
             }
             foreach (var item in entity.InverseManager)
             {
-                _context.Staffs.FirstOrDefault(x => x == item).IsDeleted = true;
+                item.IsDeleted = true;
             }
             foreach (var item in entity.Orders)
             {
-                _context.Orders.FirstOrDefault(x => x == item).IsDeleted = true;
+                 item.IsDeleted = true;
             }
-            _context.Staffs.FirstOrDefault(x => x == entity).IsDeleted = true;
+            entity.IsDeleted = true;
+            _context.Update(entity);
             _context.SaveChanges();
             return Ok();
         }

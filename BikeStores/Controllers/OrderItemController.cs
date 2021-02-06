@@ -42,7 +42,8 @@ namespace BikeStores.Controllers
             {
                 return NoContent();
             }
-            _context.OrderItems.FirstOrDefault(x=> x==entity).IsDeleted=true;
+            entity.IsDeleted=true;
+            _context.Update(entity);
             _context.SaveChanges();
             return Ok();
         }
